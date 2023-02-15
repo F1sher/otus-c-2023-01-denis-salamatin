@@ -64,10 +64,11 @@ int main(int argc, char *argv[])
 			read(fd_fname, fname_size, 2);
 
 			// get file name
-			char *fname = (char *)calloc(fname_size[0] + 16 * fname_size[1], sizeof(char));
+			char *fname = (char *)calloc(fname_size[0] + 16 * fname_size[1] + 1, sizeof(char));
 			lseek(fd_fname, sign_lpos + sign_shift + 26 + 4, SEEK_SET);
 			read(fd_fname, fname, fname_size[0] + 16 * fname_size[1]);
-
+			fname[fname_size[0] + 16 * fname_size[1]] = '\0';
+			
 			printf("%s\n", fname);
 			
 			free(fname);
