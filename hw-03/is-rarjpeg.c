@@ -4,7 +4,6 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "zipfiletypes.h"
 
 
 // search 4-byte sign in data of datalen size from start index. Return first occuerence or -1 if no sign
