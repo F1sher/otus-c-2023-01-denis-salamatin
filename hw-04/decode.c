@@ -29,8 +29,6 @@ void print_help() {
 	printf("decode ENCODING INPUT_FILENAME OUTPUT_FILENAME\n");
 	printf("Where ENCODING is one of the supported encoding of INPUT_FILENAME: koi8-r, cp-1251 or iso-8859.\n");
 	printf("OUTPUT_FILENAME will be overwritten if exist or created.\n");
-	
-	return ;
 }
 
 void atexit_clean(int *fd1, int *fd2, void **dat)
