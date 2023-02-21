@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
 
 
-unsigned short koi8r[0x100] = {[0xc0] = 0xd18e, [0xc1] = 0xd0b0, [0xc2] = 0xd0b1, [0xc3] = 0xd186, [0xc4] = 0xd0b4, [0xc5] = 0xd0b5, [0xc6] = 0xd1b4, [0xc7] = 0xd0b3, 
+uint8_t koi8r_low[0x7f];
+uint16_t koi8r[0x100] = {[0xc0] = 0xd18e, [0xc1] = 0xd0b0, [0xc2] = 0xd0b1, [0xc3] = 0xd186, [0xc4] = 0xd0b4, [0xc5] = 0xd0b5, [0xc6] = 0xd1b4, [0xc7] = 0xd0b3, 
 			       [0xc8] = 0xd185, [0xc9] = 0xd0b8, [0xca] = 0xd0b9, [0xcb] = 0xd0ba, [0xcc] = 0xd0bb, [0xcd] = 0xd0bc, [0xce] = 0xd0bd, [0xcf] = 0xd0be,
 			       [0xd0] = 0xd0bf, [0xd1] = 0xd18f, [0xd2] = 0xd180, [0xd3] = 0xd181, [0xd4] = 0xd182, [0xd5] = 0xd183, [0xd6] = 0xd0b6, [0xd7] = 0xd0b2,
 			       [0xd8] = 0xd18c, [0xd9] = 0xd18b, [0xda] = 0xd0b7, [0xdb] = 0xd188, [0xdc] = 0xd18d, [0xdd] = 0xd189, [0xde] = 0xd187, [0xdf] = 0xd18a,
@@ -14,8 +16,12 @@ unsigned short koi8r[0x100] = {[0xc0] = 0xd18e, [0xc1] = 0xd0b0, [0xc2] = 0xd0b1
 			       [0xe8] = 0xd0a5, [0xe9] = 0xd098, [0xea] = 0xd099, [0xeb] = 0xd09a, [0xec] = 0xd09b, [0xed] = 0xd09c, [0xee] = 0xd09d, [0xef] = 0xd09e,
 			       [0xf0] = 0xd09f, [0xf1] = 0xd0af, [0xf2] = 0xd0a0, [0xf3] = 0xd0a1, [0xf4] = 0xd0a2, [0xf5] = 0xd0a3, [0xf6] = 0xd096, [0xf7] = 0xd092,
 			       [0xf8] = 0xd0ac, [0xf9] = 0xd0ab, [0xfa] = 0xd097, [0xfb] = 0xd0a8, [0xfc] = 0xd0ad, [0xfd] = 0xd0a9, [0xfe] = 0xd0a7, [0xff] = 0xd0aa};
-unsigned short cp1251[0x100];
-unsigned short iso8859[0x100];
+
+uint8_t cp1251_low[0x7f];
+uint16_t cp1251[0x100];
+
+uint8_t iso8859_low[0x7f];
+uint16_t iso8859[0x100];
 
 
 void print_help() {
@@ -23,6 +29,15 @@ void print_help() {
 	printf("decode ENCODING INPUT_FILENAME OUTPUT_FILENAME\n");
 	printf("Where ENCODING is one of the supported encoding of INPUT_FILENAME: koi8-r, cp-1251 or iso-8859.\n");
 	printf("OUTPUT_FILENAME will be overwritten if exist or created.\n");
+	
+	return ;
+}
+
+void atexit_clean(int *fd1, int *fd2, void **dat)
+{
+	close(*fd1); *fd1 = -1;
+	close(*fd2); *fd2 = -2;
+	free(*dat); *dat = NULL;
 	
 	return ;
 }
@@ -45,8 +60,8 @@ int main(int argc, char *argv[])
 	}
 	
 	//fill koi8r -> utf8 table
-	for (int i = 0; i < 0x7e; i++) {
-		koi8r[i] = i;
+	for (int i = 0; i < 0x7f; i++) {
+		koi8r_low[i] = i;
 	}
 
 	//swap lsb and msb
@@ -56,7 +71,7 @@ int main(int argc, char *argv[])
 
 	//fill cp1251 to utf8 table
 	for (int i = 0; i < 0x7f; i++) {
-		cp1251[i] = i;
+		cp1251_low[i] = i;
 	}
 
 	for (int i = 0xc0; i <= 0xcf; i++) {
@@ -79,7 +94,7 @@ int main(int argc, char *argv[])
 
 	//fill iso8595
 	for (int i = 0; i < 0x7f; i++) {
-		iso8859[i] = i;
+		iso8859_low[i] = i;
 	}
 
 	for (int i = 0xb0; i < 0xdf; i++) {
@@ -120,48 +135,82 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	unsigned short *outbuf = (unsigned short *)calloc(sz, sizeof(unsigned short));
-
-	if (!outbuf) {
-		close(fd_in);
-		free(outbuf); outbuf = NULL;
-		fprintf(stderr, "Error in memory allocation for output buffer\n");
-		
-		return -1;
-	}
-
-	//convert
-	for (int i = 0; i < sz; i++) {
-		if (!strncmp(argv[1], "koi8-r", 7)) {
-			outbuf[i] = koi8r[inbuf[i]];
-		}
-		else if (!strncmp(argv[1], "cp-1251", 8)) {
-			outbuf[i] = cp1251[inbuf[i]];
-		}
- 		else if (!strncmp(argv[1], "iso-8859", 9)) {
-			outbuf[i] = iso8859[inbuf[i]];
-		}
-	}
-
 	//write text to the output file
 	int fd_out = open(argv[3], O_WRONLY | O_TRUNC | O_CREAT, 0644);
 	if (!fd_out) {
 		close(fd_in);
-		close(fd_out);
 		free(inbuf); inbuf = NULL;
-		free(outbuf); outbuf = NULL;
 		perror("Error in open output file");
 
 		return -1;
 	}
 	
-	sz = write(fd_out, outbuf, sz * sizeof(unsigned short));
-
-	close(fd_in);
-	close(fd_out);
-	free(inbuf); inbuf = NULL;
-	free(outbuf); outbuf = NULL;
-
+	//convert
+	for (int i = 0, wr_sz = 0; i < sz; i++) {
+		if (!strncmp(argv[1], "koi8-r", 7)) {
+			if (inbuf[i] < 128) {
+				wr_sz = write(fd_out, &(koi8r_low[inbuf[i]]), 1);
+				if (wr_sz != 1) {
+					atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+					fprintf(stderr, "Error in write utf8 char in out file | write size = %d, should be 1\n", wr_sz);
+					
+					return -1;
+				}
+			}
+			else {
+				wr_sz = write(fd_out, &(koi8r[inbuf[i]]), 2);
+				if (wr_sz != 2) {
+					atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+					fprintf(stderr, "Error in write utf8 char in out file | write size = %d, should be 2\n", wr_sz);
+					
+					return -1;
+				}
+			}
+		}
+		else if (!strncmp(argv[1], "cp-1251", 8)) {
+			if (inbuf[i] < 128) {
+				wr_sz = write(fd_out, &(cp1251_low[inbuf[i]]), 1);
+				if (wr_sz != 1) {
+					atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+					fprintf(stderr, "Error in write utf8 char in out file | write size = %d, should be 1\n", wr_sz);
+					
+					return -1;
+				}
+			}
+			else {
+				wr_sz = write(fd_out, &(cp1251[inbuf[i]]), 2);
+				if (wr_sz != 2) {
+					atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+					fprintf(stderr, "Error in write utf8 char in out file | write size = %d, should be 2\n", wr_sz);
+					
+					return -1;
+				}
+			}
+		}
+ 		else if (!strncmp(argv[1], "iso-8859", 9)) {
+			if (inbuf[i] < 128) {
+				wr_sz = write(fd_out, &(iso8859_low[inbuf[i]]), 1);
+				if (wr_sz != 1) {
+					atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+					fprintf(stderr, "Error in write utf8 char in out file | write size = %d, should be 1\n", wr_sz);
+					
+					return -1;
+				}
+			}
+			else {
+				wr_sz = write(fd_out, &(iso8859[inbuf[i]]), 2);
+				if (wr_sz != 2) {
+					atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+					fprintf(stderr, "Error in write utf8 char in out file | write size = %d, should be 2\n", wr_sz);
+					
+					return -1;
+				}
+			}
+		}
+	}
+	
+	atexit_clean(&fd_in, &fd_out, (void **)&inbuf);
+	
 	printf("The converted text is written in '%s'\n", argv[3]);
 	
 	return 0;
