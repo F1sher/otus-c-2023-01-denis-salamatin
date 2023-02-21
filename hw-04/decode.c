@@ -38,8 +38,6 @@ void atexit_clean(int *fd1, int *fd2, void **dat)
 	close(*fd1); *fd1 = -1;
 	close(*fd2); *fd2 = -2;
 	free(*dat); *dat = NULL;
-	
-	return ;
 }
 
 int main(int argc, char *argv[])
