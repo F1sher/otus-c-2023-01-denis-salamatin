@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <wchar.h>
+#include <locale.h>
 #include <curl/curl.h>
 #include "jsmn.h"
 
@@ -14,6 +16,10 @@ struct weather {
 	double precip;
 	int pressure;
 	int temperature;
+	int max_temperature;
+	int min_temperature;
+	int wind_speed;
+	char wind_dir[128];
 	char cityname[128];
 };
 
@@ -43,7 +49,7 @@ int parse_json(struct weather *wth)
 		return -1;
 	}
 	
-	for (int i = 0; i < 256; i++) {
+	for (int i = 0; i < 64; i++) {
 		//printf("%d - type = %d\t", i, t[i].type);
 
 		if (jsoneq(JSON, &t[i], "FeelsLikeC")) {
@@ -71,6 +77,21 @@ int parse_json(struct weather *wth)
 			tmp_str[t[i+1].end - t[i+1].start] = '\0';
 			wth->temperature = atoi(tmp_str);
 		}
+		else if (jsoneq(JSON, &t[i], "windspeedKmph")) {
+			strncpy(tmp_str, JSON + t[i+1].start, t[i+1].end - t[i+1].start);
+			tmp_str[t[i+1].end - t[i+1].start] = '\0';
+			wth->wind_speed = atoi(tmp_str);
+		}
+		else if (jsoneq(JSON, &t[i], "winddir16Point")) {
+			strncpy(wth->wind_dir, JSON + t[i+1].start,
+				(t[i+1].end - t[i+1].start) < 128 ? t[i+1].end - t[i+1].start : 128);
+			if ((t[i+4].end - t[i+1].start) < 128) {
+				wth->wind_dir[t[i+1].end - t[i+1].start] = '\0';
+			}
+			else {
+				wth->wind_dir[127] = '\0';
+			}
+		}
 		else if (jsoneq(JSON, &t[i], "areaName")) {
 			strncpy(wth->cityname, JSON + t[i+4].start,
 				(t[i+4].end - t[i+4].start) < 128 ? t[i+4].end - t[i+4].start : 128);
@@ -83,6 +104,19 @@ int parse_json(struct weather *wth)
 		}
 	}
 
+	for (int i = r; i > r-20; i--) {
+		if (jsoneq(JSON, &t[i], "maxtempC")) {
+			strncpy(tmp_str, JSON + t[i+1].start, t[i+1].end - t[i+1].start);
+			tmp_str[t[i+1].end - t[i+1].start] = '\0';
+			wth->max_temperature = atoi(tmp_str);
+		}
+		else if (jsoneq(JSON, &t[i], "mintempC")) {
+			strncpy(tmp_str, JSON + t[i+1].start, t[i+1].end - t[i+1].start);
+			tmp_str[t[i+1].end - t[i+1].start] = '\0';
+			wth->min_temperature = atoi(tmp_str);
+		}
+	}
+	
 	return 0;
 }
 
@@ -96,10 +130,17 @@ size_t write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
 
 void print_weather(struct weather *wth)
 {
-	printf("air temperature is %d deg C", wth->temperature);
-	printf(", feels like %d deg C. ", wth->feelslike);
-	printf("Air humidity is %d %%. ", wth->humidity);
-	printf("Pressure is %d mm. Hg. ", wth->pressure);
+	setlocale(LC_CTYPE, "");
+	wint_t deg = 0x00b0;
+	
+	printf("air temperature is %d%lc C (min %d%lc C, max %d%lc C)",
+	       wth->temperature, deg,
+	       wth->min_temperature, deg,
+	       wth->max_temperature, deg);
+	printf(", feels like %d%lc C. ", wth->feelslike, deg);
+	printf("Air humidity is %d %%. \n", wth->humidity);
+	printf("Pressure is %d mmHg. ", wth->pressure);
+	printf("Wind speed is %d km/h, direction %s. ", wth->wind_speed, wth->wind_dir);
 	if (wth->precip < 0.01) {
 		printf("Precipitations are not expected.\n");
 	}
