@@ -53,9 +53,9 @@ static int parse_json(struct weather *wth)
 	
 	for (int i = 0; i < 64; i++) {
 		if (jsoneq(JSON, &t[i], "FeelsLikeC")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -64,9 +64,9 @@ static int parse_json(struct weather *wth)
 			wth->feelslike = atoi(tmp_str);
 		}
 		else if (jsoneq(JSON, &t[i], "humidity")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -75,9 +75,9 @@ static int parse_json(struct weather *wth)
 			wth->humidity = atoi(tmp_str);
 		}
 		else if (jsoneq(JSON, &t[i], "precipMM")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -86,9 +86,9 @@ static int parse_json(struct weather *wth)
 			wth->precip = atof(tmp_str);
 		}
 		else if (jsoneq(JSON, &t[i], "pressureInches")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -97,9 +97,9 @@ static int parse_json(struct weather *wth)
 			wth->pressure = (int) (atof(tmp_str) * 25.4);
 		}
 		else if (jsoneq(JSON, &t[i], "temp_C")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -108,9 +108,9 @@ static int parse_json(struct weather *wth)
 			wth->temperature = atoi(tmp_str);
 		}
 		else if (jsoneq(JSON, &t[i], "windspeedKmph")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -119,7 +119,7 @@ static int parse_json(struct weather *wth)
 			wth->wind_speed = atoi(tmp_str);
 		}
 		else if (jsoneq(JSON, &t[i], "winddir16Point")) {
-			strncpy(wth->wind_dir, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(wth->wind_dir)));	
+			strncpy(wth->wind_dir, JSON + t[i+1].start, sizeof(wth->wind_dir));	
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(wth->wind_dir)) == sizeof(wth->wind_dir)) {
 				wth->wind_dir[sizeof(wth->wind_dir) - 1] = '\0';
 			}
@@ -128,8 +128,8 @@ static int parse_json(struct weather *wth)
 			}
 		}
 		else if (jsoneq(JSON, &t[i], "areaName")) {
-			strncpy(wth->cityname, JSON + t[i+4].start, MIN(t[i+4].end - t[i+4].start, sizeof(wth->cityname)));
-			if (MIN(t[i+4].end - t[i+4].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
+			strncpy(wth->cityname, JSON + t[i+4].start, sizeof(wth->cityname));
+			if (MIN(t[i+4].end - t[i+4].start, sizeof(wth->cityname)) == sizeof(wth->cityname)) {
 				wth->cityname[sizeof(wth->cityname) - 1] = '\0';
 			}
 			else {
@@ -141,9 +141,9 @@ static int parse_json(struct weather *wth)
 
 	for (int i = 0; i < r; i++) {
 		if (jsoneq(JSON, &t[i], "maxtempC")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -154,9 +154,9 @@ static int parse_json(struct weather *wth)
 			}
 		}
 		else if (jsoneq(JSON, &t[i], "mintempC")) {
-			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
+			strncpy(tmp_str, JSON + t[i+1].start, sizeof(tmp_str));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
-				tmp_str[MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) - 1] = '\0';
+				tmp_str[sizeof(tmp_str) - 1] = '\0';
 			}
 			else {
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
@@ -173,7 +173,9 @@ static int parse_json(struct weather *wth)
 
 static size_t write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
-	if (JSON_location + size * nmemb > strlen(JSON)) {
+	if (JSON_location + size * nmemb > sizeof(JSON)) {
+		printf("%lu %lu\n", JSON_location + size * nmemb, sizeof(JSON));
+		
 		return 0;
 	}
 	
@@ -241,41 +243,36 @@ int main(int argc, char *argv[])
 		res = curl_easy_setopt(curl, CURLOPT_CAINFO, "./wttr-in-chain.pem");
 		if (res != CURLE_OK) {
 			fprintf(stderr, "Error in set sertificate\n");
-			
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
+
+			goto cleanup_curl;
 		}
 		
 		res = curl_easy_setopt(curl, CURLOPT_URL, url);
 		if (res != CURLE_OK) {
 			fprintf(stderr, "Error in set url\n");
-			
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
+
+			goto cleanup_curl;
 		}
 
 		res = curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 		if (res != CURLE_OK) {
 			fprintf(stderr, "Error in set http get request\n");
-			
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
+
+			goto cleanup_curl;
 		}
 		
 		res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
 		if (res != CURLE_OK) {
 			fprintf(stderr, "Error in set write callback function\n");
-			
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
+
+			goto cleanup_curl;
 		}
 
 		res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, NULL);
 		if (res != CURLE_OK) {
 			fprintf(stderr, "Error in write data\n");
-			
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
+
+			goto cleanup_curl;
 		}
 
 #ifdef DEBUG
@@ -290,6 +287,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+ cleanup_curl:
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
 
