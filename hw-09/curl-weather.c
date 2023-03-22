@@ -50,7 +50,6 @@ static int parse_json(struct weather *wth)
 		
 		return -1;
 	}
-	printf("r = %d\n", r);
 	
 	for (int i = 0; i < 64; i++) {
 		if (jsoneq(JSON, &t[i], "FeelsLikeC")) {
@@ -140,7 +139,7 @@ static int parse_json(struct weather *wth)
 		}
 	}
 
-	for (int i = r; i > r-20; i--) {
+	for (int i = 0; i < r; i++) {
 		if (jsoneq(JSON, &t[i], "maxtempC")) {
 			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
 			if (MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)) == sizeof(tmp_str)) {
@@ -150,7 +149,9 @@ static int parse_json(struct weather *wth)
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
 			}
 
-			wth->max_temperature = atoi(tmp_str);
+			if (wth->max_temperature < atoi(tmp_str)) {
+				wth->max_temperature = atoi(tmp_str);
+			}
 		}
 		else if (jsoneq(JSON, &t[i], "mintempC")) {
 			strncpy(tmp_str, JSON + t[i+1].start, MIN(t[i+1].end - t[i+1].start, sizeof(tmp_str)));
@@ -161,7 +162,9 @@ static int parse_json(struct weather *wth)
 				tmp_str[t[i+1].end - t[i+1].start] = '\0';
 			}
 
-			wth->min_temperature = atoi(tmp_str);
+			if (wth->min_temperature > atoi(tmp_str)) {
+				wth->min_temperature = atoi(tmp_str);
+			}
 		}
 	}
 	
@@ -291,7 +294,11 @@ int main(int argc, char *argv[])
 	}
 	
 	JSON[JSON_location+1] = '\0';
-	struct weather wth;
+
+	struct weather wth;	
+	wth.max_temperature = -100;
+	wth.min_temperature = 100;
+	
 	if (parse_json(&wth)) {
 		return EXIT_FAILURE;
 	}
