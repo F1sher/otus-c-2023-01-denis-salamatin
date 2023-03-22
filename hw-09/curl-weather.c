@@ -172,7 +172,11 @@ static int parse_json(struct weather *wth)
 }
 
 static size_t write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
-{	
+{
+	if (JSON_location + size * nmemb > strlen(JSON)) {
+		return 0;
+	}
+	
 	strncpy(JSON + JSON_location, ptr, size * nmemb);
 	JSON_location += size * nmemb;
 	
