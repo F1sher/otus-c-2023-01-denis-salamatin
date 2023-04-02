@@ -1,0 +1,20 @@
+--- clib-package.c	2020-09-08 02:51:24.000000000 +0300
++++ clib-package-patch1.c	2023-04-02 15:36:32.372186930 +0300
+@@ -1489,7 +1489,7 @@
+       while (--i >= 0) {
+         fetch_package_file_thread_data_t *data = fetchs[i];
+         int *status = 0;
+-        pthread_join(data->thread, (void **)status);
++        pthread_join(data->thread, (void **)&status);
+         free(data);
+         fetchs[i] = NULL;
+ 
+@@ -1519,7 +1519,7 @@
+     fetch_package_file_thread_data_t *data = fetchs[i];
+     int *status = 0;
+ 
+-    pthread_join(data->thread, (void **)status);
++    pthread_join(data->thread, (void **)&status);
+ 
+     (void)pending--;
+     free(data);
