@@ -1,5 +1,6 @@
 #include "otuslog.h"
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
 
 	int ret = 0;
 	
-	ret = init_log(argv[1], 128);
+	ret = init_log(argv[1], 512);
 	if (ret) {
 		fprintf(stderr, "Error in otuslog lib init. Exit...\n");
 
@@ -63,6 +64,12 @@ int main(int argc, char *argv[])
 	
 	pthread_join(th1, NULL);
 	pthread_join(th2, NULL);
+
+	//malloc error callback
+	char *bad_arr = (char *)malloc(-1);
+	if (!bad_arr) {
+		LOG_ERROR("Error in malloc on line %d, returns %p!", __LINE__ - 2, bad_arr);
+	}
 	
 	ret = final_log();
 	if (ret) {
