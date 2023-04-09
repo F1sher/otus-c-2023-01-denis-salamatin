@@ -33,10 +33,29 @@ int main(int argc, char *argv[])
 	init_log(argv[1], 128);
 
 	pthread_t th1, th2;
-	pthread_create(&th1, NULL, foo, "info");
-	pthread_create(&th2, NULL, foo, "error");
+	int ret = 0;
+	ret = pthread_create(&th1, NULL, foo, "info");
+	if (ret) {
+		fprintf(stderr, "Error in creation of the first thread, ret = %d. Exit...\n", ret);
+
+		final_log();
+		return 0;
+	}
+	
+	ret = pthread_create(&th2, NULL, foo, "error");
+	if (ret) {
+		fprintf(stderr, "Error in creation of the second thread, ret = %d. Exit...\n", ret);
+		
+		pthread_join(th1, NULL);
+		
+		final_log();
+		return 0;
+	}
 	
 	sleep(2);
+	
+	pthread_join(th1, NULL);
+	pthread_join(th2, NULL);
 	
 	final_log();
   
