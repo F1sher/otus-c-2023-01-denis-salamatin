@@ -25,14 +25,17 @@ pthread_mutex_t lock;
 
 int init_log(const char *filename, size_t fsize)
 {
+  int ret = pthread_mutex_init(&lock, NULL);
+  if (ret) {
+	  return ret;
+  }
+	
   fp = fopen(filename, "w");
   if (!fp) {
     perror("Error in open log file");
     
     return -1;
   }
-
-  pthread_mutex_init(&lock, NULL);
 
   log_fsize = fsize;
   wr_ch_count = 0;
@@ -44,7 +47,10 @@ int final_log()
 {	
   fclose(fp);
 
-  pthread_mutex_destroy(&lock);
+  int ret = pthread_mutex_destroy(&lock);
+  if (ret) {
+	  return ret;
+  }
   
   return 0;
 }

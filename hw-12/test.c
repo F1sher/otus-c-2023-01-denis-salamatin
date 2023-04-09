@@ -30,10 +30,17 @@ int main(int argc, char *argv[])
 
 	print_help();
 
-	init_log(argv[1], 128);
+	int ret = 0;
+	
+	ret = init_log(argv[1], 128);
+	if (ret) {
+		fprintf(stderr, "Error in otuslog lib init. Exit...\n");
+
+		return 0;
+	}
 
 	pthread_t th1, th2;
-	int ret = 0;
+
 	ret = pthread_create(&th1, NULL, foo, "info");
 	if (ret) {
 		fprintf(stderr, "Error in creation of the first thread, ret = %d. Exit...\n", ret);
@@ -57,7 +64,12 @@ int main(int argc, char *argv[])
 	pthread_join(th1, NULL);
 	pthread_join(th2, NULL);
 	
-	final_log();
+	ret = final_log();
+	if (ret) {
+		fprintf(stderr, "Error in otuslog lib final. Exit...\n");
+
+		return 0;
+	}
   
 	return 0;
 }
