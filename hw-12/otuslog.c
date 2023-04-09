@@ -41,9 +41,11 @@ int init_log(const char *filename, size_t fsize)
 }
 
 int final_log()
-{
+{	
   fclose(fp);
 
+  pthread_mutex_destroy(&lock);
+  
   return 0;
 }
 
