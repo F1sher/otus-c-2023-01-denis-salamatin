@@ -23,6 +23,7 @@
  *
  */
 
+#include <sys/syslog.h>
 #define  _POSIX_C_SOURCE  200809L
 
 #include <stdio.h>
@@ -141,8 +142,6 @@ static void daemonize()
 
 	/* An error occurred */
 	if (pid < 0) {
-		syslog(LOG_CRIT, "Error in first fork()");
-		
 		exit(EXIT_FAILURE);
 	}
 
@@ -153,30 +152,17 @@ static void daemonize()
 
 	/* On success: The child process becomes session leader */
 	if (setsid() < 0) {
-		syslog(LOG_CRIT, "Error in setsid()");
-		
 		exit(EXIT_FAILURE);
 	}
 
 	/* Ignore signal sent from child to parent process */
-	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	if (sigaction(SIGHUP, &sa, NULL) < 0) {
-		syslog(LOG_CRIT, "Can not ignore SIGHUP");
-
-		exit(EXIT_FAILURE);
-	}
-	//signal(SIGCHLD, SIG_IGN);
+	signal(SIGCHLD, SIG_IGN);
 
 	/* Fork off for the second time*/
 	pid = fork();
 
 	/* An error occurred */
 	if (pid < 0) {
-		syslog(LOG_CRIT, "Error in second fork()");
-		
 		exit(EXIT_FAILURE);
 	}
 
@@ -190,11 +176,9 @@ static void daemonize()
 
 	/* Change the working directory to the root directory */
 	/* or another appropriated directory */
-	if (chdir("/") < 0) {
-		syslog(LOG_CRIT, "Can not make / as working directory");
+	chdir("/");
 
-		exit(EXIT_FAILURE);
-	}
+	fprintf(stdout, "Ok, I'm here\n");
 	
 	/* Close all open file descriptors */
 	for (fd = sysconf(_SC_OPEN_MAX); fd > 0; fd--) {
@@ -205,6 +189,23 @@ static void daemonize()
 	stdin = fopen("/dev/null", "r");
 	stdout = fopen("/dev/null", "w+");
 	stderr = fopen("/dev/null", "w+");
+
+	/* Try to write PID of daemon to lockfile */
+	const char *pid_file_name = "/home/dasalam/job/otus/c/otus-c-2023-01-denis-salamatin/hw-19/daemon.pid";
+	if (pid_file_name != NULL)
+	{
+		char str[256];
+		int pid_fd = open(pid_file_name, O_RDWR|O_CREAT, 0640);
+		if (pid_fd < 0) {
+			/* Can't open lockfile */
+			exit(EXIT_FAILURE);
+		}
+		/* Get current PID */
+		sprintf(str, "%d\n", getpid());
+		/* Write PID to lockfile */
+		write(pid_fd, str, strlen(str));
+		close(pid_fd);
+	}
 }
 
 /**
@@ -292,6 +293,7 @@ int main(int argc, char *argv[])
 	if (sd < 0) {
 		perror("socket() failed");
 		free(conf_filename); conf_filename = NULL;
+		free(server_path); server_path = NULL;
 		
 		return EXIT_FAILURE;
 	}
@@ -300,20 +302,23 @@ int main(int argc, char *argv[])
 	memset(&serveraddr, 0, sizeof(serveraddr));
 	serveraddr.sun_family = AF_UNIX;
 	strcpy(serveraddr.sun_path, server_path);
+	unlink(serveraddr.sun_path);
 	
 	int rc = bind(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 	if (rc < 0) {
 		perror("bind() failed");
 		free(conf_filename); conf_filename = NULL;
+		free(server_path); server_path = NULL;
 		
 		return EXIT_FAILURE;
 	}
 
-	rc = listen(sd, 2);
+	rc = listen(sd, 10);
 	if (rc < 0)  {
 		close(sd);
 		unlink(server_path);
 		free(conf_filename); conf_filename = NULL;
+		free(server_path); server_path = NULL;
 		
 		perror("listen() failed");
 		
@@ -341,11 +346,15 @@ int main(int argc, char *argv[])
 	/* Never ending loop of server */
 	while (running == 1) {
 		/* TODO: dome something useful here */
-		//printf("Listening...\n");
+		// see https://gist.github.com/tscho/397539/05eab96d26dd73bf3cb0a47fbe717a9402582edf
+		printf("Listening...\n");
+
+		struct sockaddr_un remote;
+		int t = sizeof(remote);
 		
-		sd2 = accept(sd, NULL, NULL);
+		sd2 = accept(sd, (struct sockaddr *)&remote, sizeof(remote)); //NULL, NULL?
 		if (sd2 < 0) {
-			syslog(LOG_ERR, "accept() failed : %s ", strerror(errno));
+			syslog(LOG_CRIT, "accept() failed : %s ", strerror(errno));
 			
 			break;
 		}
@@ -364,7 +373,7 @@ int main(int argc, char *argv[])
 		
 		rc = send(sd2, buf, sizeof(buf), 0);
 		if (rc < 0) {
-			syslog(LOG_ERR, "send() faild : %s ", strerror(errno));
+			syslog(LOG_ERR, "send() failed : %s ", strerror(errno));
 		}
 		close(sd2); sd2 = -1;
 	}
