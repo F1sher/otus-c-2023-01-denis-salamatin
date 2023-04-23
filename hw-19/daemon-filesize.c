@@ -49,8 +49,8 @@
 static int running = 0;
 static char *conf_filename = NULL;
 static char *app_name = NULL;
-
 static char *datafile = NULL;
+static char *server_path = NULL;
 
 /**
  * \brief Read configuration from config file
@@ -62,22 +62,39 @@ int read_conf_file(int reload)
 	g_autoptr(GKeyFile) key_file = g_key_file_new ();
 
 	if (!g_key_file_load_from_file (key_file, conf_filename, G_KEY_FILE_NONE, &error)) {
-		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
-			syslog(LOG_ERR, "Error loading key file: %s", error->message);
-		return -1;
+	  if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
+	    syslog(LOG_ERR, "Error loading key file: %s", error->message);
+	    
+	    return -1;
+	  }
 	}
 
-	g_autofree gchar *val = g_key_file_get_string (key_file, "Files", "DataFile", &error);
-	if (val == NULL &&
+	g_autofree gchar *val1 = g_key_file_get_string (key_file, "Files", "DataFile", &error);
+	if (val1 == NULL &&
 	    !g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
 		syslog(LOG_ERR, "Error finding key in key file: %s", error->message);
 			
 		ret = -1;
 	}
-	else if (val == NULL) {
+	else if (val1 == NULL) {
 		syslog(LOG_ERR, "The DataFile should be specified in .ini");
 		
 		ret = -2;
+	}
+
+	g_autofree gchar *val2 = g_key_file_get_string (key_file, "Files", "SocketFile", &error);
+	if (val2 == NULL &&
+	    !g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
+	  syslog(LOG_CRIT, "Error to get socket filename from %s", conf_filename);
+	  free(conf_filename); conf_filename = NULL;
+		
+	  return EXIT_FAILURE;
+	}
+	else if (val2 == NULL) {
+		syslog(LOG_CRIT, "The SocketFile field is empty in .ini file"); 
+		free(conf_filename); conf_filename = NULL;
+		
+		return EXIT_FAILURE;
 	}
 	
 	if (!ret) {
@@ -92,7 +109,9 @@ int read_conf_file(int reload)
 		}
 
 		if (datafile) { free(datafile); datafile = NULL; }
-		datafile = g_strdup(val);
+		datafile = g_strdup(val1);
+
+		server_path = g_strdup(val2);
 	}
 
 	return ret;
@@ -191,14 +210,15 @@ static void daemonize()
 	stderr = fopen("/dev/null", "w+");
 
 	/* Try to write PID of daemon to lockfile */
-	const char *pid_file_name = "/home/dasalam/job/otus/c/otus-c-2023-01-denis-salamatin/hw-19/daemon.pid";
+	const char *pid_file_name = "/home/dasalam/job/otus-c-2023-01-denis-salamatin/hw-19/daemon.pid";
 	if (pid_file_name != NULL)
 	{
 		char str[256];
 		int pid_fd = open(pid_file_name, O_RDWR|O_CREAT, 0640);
 		if (pid_fd < 0) {
-			/* Can't open lockfile */
-			exit(EXIT_FAILURE);
+		  syslog(LOG_CRIT, "Error in open file to write PID, fd = %d ", fd);
+		  
+		  exit(EXIT_FAILURE);
 		}
 		/* Get current PID */
 		sprintf(str, "%d\n", getpid());
@@ -259,43 +279,32 @@ int main(int argc, char *argv[])
 				break;
 		}
 	}
+
+	/* Open system log and write message to it */
+	openlog(argv[0], LOG_PID | LOG_CONS, LOG_DAEMON);
+	syslog(LOG_INFO, "Started %s", app_name);
+	
 	// create and initialize AF_UNIX socket
 	// example from https://www.ibm.com/docs/en/i/7.2?topic=uauaf-example-server-application-that-uses-af-unix-address-family
-	g_autoptr(GError) error = NULL;
-	g_autoptr(GKeyFile) key_file = g_key_file_new ();
 
-	if (!g_key_file_load_from_file (key_file, conf_filename, G_KEY_FILE_NONE, &error)) {
-		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
-			fprintf(stderr, "Error to parse %s (.ini) file", conf_filename);
-			free(conf_filename); conf_filename = NULL;
-			
-			return EXIT_FAILURE;
-		}
-	}
+	/* Read configuration from config file */
+	read_conf_file(0);
 
-	g_autofree gchar *val = g_key_file_get_string (key_file, "Files", "SocketFile", &error);
-	if (val == NULL &&
-	    !g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
-		fprintf(stderr, "Error to get socket filename from %s", conf_filename);
-		free(conf_filename); conf_filename = NULL;
-		
-		return EXIT_FAILURE;
+	/* When daemonizing is requested at command line. */
+	if (start_daemonized == 1) {
+		/* It is also possible to use glibc function deamon()
+		 * at this point, but it is useful to customize your daemon. */
+		daemonize();
 	}
-	else if (val == NULL) {
-		fprintf(stderr, "The SocketFile field is empty in .ini file");
-		free(conf_filename); conf_filename = NULL;
-		
-		return EXIT_FAILURE;
-	}
-	char *server_path = g_strdup(val);
 	
 	int sd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sd < 0) {
-		perror("socket() failed");
-		free(conf_filename); conf_filename = NULL;
-		free(server_path); server_path = NULL;
+	  perror("socket() failed");
+	  syslog(LOG_CRIT, "socket() failed | %s", strerror(errno));
+	  free(conf_filename); conf_filename = NULL;
+	  free(server_path); server_path = NULL;
 		
-		return EXIT_FAILURE;
+	  return EXIT_FAILURE;
 	}
 
 	struct sockaddr_un serveraddr;
@@ -307,6 +316,7 @@ int main(int argc, char *argv[])
 	int rc = bind(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 	if (rc < 0) {
 		perror("bind() failed");
+		syslog(LOG_CRIT, "bind() failed | %s", strerror(errno));
 		free(conf_filename); conf_filename = NULL;
 		free(server_path); server_path = NULL;
 		
@@ -321,23 +331,10 @@ int main(int argc, char *argv[])
 		free(server_path); server_path = NULL;
 		
 		perror("listen() failed");
+		syslog(LOG_CRIT, "listen() failed | %s", strerror(errno));
 		
 		return EXIT_FAILURE;
 	}
-	
-	/* When daemonizing is requested at command line. */
-	if (start_daemonized == 1) {
-		/* It is also possible to use glibc function deamon()
-		 * at this point, but it is useful to customize your daemon. */
-		daemonize();
-	}
-
-	/* Open system log and write message to it */
-	openlog(argv[0], LOG_PID | LOG_CONS, LOG_DAEMON);
-	syslog(LOG_INFO, "Started %s", app_name);
-
-	/* Read configuration from config file */
-	read_conf_file(0);
 
 	/* This global variable can be changed in function handling signal */
 	running = 1;
@@ -348,11 +345,12 @@ int main(int argc, char *argv[])
 		/* TODO: dome something useful here */
 		// see https://gist.github.com/tscho/397539/05eab96d26dd73bf3cb0a47fbe717a9402582edf
 		printf("Listening...\n");
+		syslog(LOG_INFO, "Listening...");
 
 		struct sockaddr_un remote;
 		int t = sizeof(remote);
 		
-		sd2 = accept(sd, (struct sockaddr *)&remote, sizeof(remote)); //NULL, NULL?
+		sd2 = accept(sd, NULL, NULL);
 		if (sd2 < 0) {
 			syslog(LOG_CRIT, "accept() failed : %s ", strerror(errno));
 			
@@ -367,8 +365,8 @@ int main(int argc, char *argv[])
 			snprintf(buf, 65536, "%lu", datafile_size);
 		}
 		else {
-			syslog(LOG_ERR, "Error in stat : %s ", strerror(errno));
-			snprintf(buf, 3, "-1");
+		  syslog(LOG_ERR, "Error in stat : %s | ret = %d | datafile = %s", strerror(errno), ret, datafile);
+		  snprintf(buf, 3, "-1");
 		}
 		
 		rc = send(sd2, buf, sizeof(buf), 0);
