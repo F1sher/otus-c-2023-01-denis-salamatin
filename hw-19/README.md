@@ -8,7 +8,12 @@ ninja -C builddir
 
 **To run CLI program as daemon**
 ```
-./builddir/daemon-filesize -c CONFILE -d
+./builddir/daemon-filesize -c PATH-TO-CONFIG-FILE -d
 ```
 
-The config file in glib .ini format
+**Get help**
+```
+./builddir/daemon-filesize -h
+```
+
+The config file in glib .ini format: https://developer-old.gnome.org/glib/unstable/glib-Key-value-file-parser.html
