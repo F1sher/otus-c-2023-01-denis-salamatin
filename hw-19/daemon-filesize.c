@@ -60,7 +60,7 @@ int read_conf_file(int reload)
 	int ret = 0;
 	g_autoptr(GError) error = NULL;
 	g_autoptr(GKeyFile) key_file = g_key_file_new ();
-
+	
 	if (!g_key_file_load_from_file (key_file, conf_filename, G_KEY_FILE_NONE, &error)) {
 	  if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
 	    syslog(LOG_ERR, "Error loading key file: %s", error->message);
@@ -68,7 +68,7 @@ int read_conf_file(int reload)
 	    return -1;
 	  }
 	}
-
+	
 	g_autofree gchar *val1 = g_key_file_get_string (key_file, "Files", "DataFile", &error);
 	if (val1 == NULL &&
 	    !g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
@@ -196,8 +196,6 @@ static void daemonize()
 	/* Change the working directory to the root directory */
 	/* or another appropriated directory */
 	chdir("/");
-
-	fprintf(stdout, "Ok, I'm here\n");
 	
 	/* Close all open file descriptors */
 	for (fd = sysconf(_SC_OPEN_MAX); fd > 0; fd--) {
@@ -210,7 +208,8 @@ static void daemonize()
 	stderr = fopen("/dev/null", "w+");
 
 	/* Try to write PID of daemon to lockfile */
-	const char *pid_file_name = "/home/dasalam/job/otus-c-2023-01-denis-salamatin/hw-19/daemon.pid";
+	/*
+	const char *pid_file_name = "/home/dasalam/job/otus/c/otus-c-2023-01-denis-salamatin/hw-19/daemon.pid";
 	if (pid_file_name != NULL)
 	{
 		char str[256];
@@ -220,12 +219,13 @@ static void daemonize()
 		  
 		  exit(EXIT_FAILURE);
 		}
-		/* Get current PID */
+
 		sprintf(str, "%d\n", getpid());
-		/* Write PID to lockfile */
+
 		write(pid_fd, str, strlen(str));
 		close(pid_fd);
 	}
+	*/
 }
 
 /**
@@ -278,6 +278,13 @@ int main(int argc, char *argv[])
 			default:
 				break;
 		}
+	}
+
+	if (!conf_filename) {
+		fprintf(stderr, "Wrong usage!\n");
+		print_help();
+
+		return EXIT_FAILURE;
 	}
 
 	/* Open system log and write message to it */
@@ -346,9 +353,6 @@ int main(int argc, char *argv[])
 		// see https://gist.github.com/tscho/397539/05eab96d26dd73bf3cb0a47fbe717a9402582edf
 		printf("Listening...\n");
 		syslog(LOG_INFO, "Listening...");
-
-		struct sockaddr_un remote;
-		int t = sizeof(remote);
 		
 		sd2 = accept(sd, NULL, NULL);
 		if (sd2 < 0) {
